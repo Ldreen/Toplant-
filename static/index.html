@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toplantı Yönetimi</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Toplantı Yönetimi</h1>
+        <div id="toplantilar-listesi">
+            <!-- Toplantıları burada listeleyeceğiz -->
+        </div>
+        <form id="toplanti-form">
+            <label for="konu">Konu:</label>
+            <input type="text" id="konu" name="konu" required>
+            <label for="tarih">Tarih:</label>
+            <input type="date" id="tarih" name="tarih" required>
+            <label for="baslangic-saati">Başlangıç Saati:</label>
+            <input type="time" id="baslangic-saati" name="baslangic-saati" required>
+            <label for="bitis-saati">Bitiş Saati:</label>
+            <input type="time" id="bitis-saati" name="bitis-saati" required>
+            <label for="katilimcilar">Katılımcılar (virgülle ayırarak):</label>
+            <input type="text" id="katilimcilar" name="katilimcilar" required>
+            <button type="button" onclick="toplantiEkle()">Toplantıyı Ekle</button>
+        </form>
+
+        <h2>Toplantı Güncelle</h2>
+        <select id="toplanti-sec" onchange="seciliToplantiyiGoster()">
+            <option value="">Toplantı Seç</option>
+        </select>
+        <form id="guncelle-form" style="display: none;">
+            <input type="hidden" id="guncelle-toplanti-id" name="guncelle-toplanti-id">
+            <label for="guncelle-konu">Yeni Konu:</label>
+            <input type="text" id="guncelle-konu" name="guncelle-konu" required>
+            <label for="guncelle-tarih">Yeni Tarih:</label>
+            <input type="date" id="guncelle-tarih" name="guncelle-tarih" required>
+            <label for="guncelle-baslangic-saati">Yeni Başlangıç Saati:</label>
+            <input type="time" id="guncelle-baslangic-saati" name="guncelle-baslangic-saati" required>
+            <label for="guncelle-bitis-saati">Yeni Bitiş Saati:</label>
+            <input type="time" id="guncelle-bitis-saati" name="guncelle-bitis-saati" required>
+            <label for="guncelle-katilimcilar">Yeni Katılımcılar (virgülle ayırarak):</label>
+            <input type="text" id="guncelle-katilimcilar" name="guncelle-katilimcilar" required>
+            <button type="button" onclick="toplantiyiGuncelle()">Toplantıyı Güncelle</button>
+        </form>
+    </div>
+
+    <script>
+        const toplantiListesiDiv = document.getElementById("toplantilar-listesi");
+        const toplantiSecSelect = document.getElementById("toplanti-sec");
+        const guncelleForm = document.getElementById("guncelle-form");
+
+        async function toplantilariListele() {
+            toplantiListesiDiv.innerHTML = "";
+            const response = await fetch("/toplanti/");
+            const toplantilar = await response.json();
+            toplantilar.forEach(toplanti => {
+                const option = document.createElement("option");
+                option.value = toplanti.id;
+                option.textContent = toplanti.konu;
+                toplantiSecSelect.appendChild(option);
+
+                const div = document.createElement("div");
+                div.classList.add("toplanti-kutusu");
+                div.dataset.toplantiId = toplanti.id;
+                div.innerHTML = `
+                    <strong>Konu:</strong> ${toplanti.konu}<br>
+                    <strong>Tarih:</strong> ${toplanti.tarih}<br>
+                    <strong>Başlangıç Saati:</strong> ${toplanti.baslangic_saati}<br>
+                    <strong>Bitiş Saati:</strong> ${toplanti.bitis_saati}<br>
+                    <strong>Katılımcılar:</strong> ${toplanti.katilimcilar}<br>
+                    <button onclick="toplantiyiSil(${toplanti.id})">Sil</button>
+                `;
+                toplantiListesiDiv.appendChild(div);
+            });
+        }
+
+        function seciliToplantiyiGoster() {
+            const selectedToplantiId = toplantiSecSelect.value;
+            if (selectedToplantiId) {
+                const selectedToplantiDiv = document.querySelector(`.toplanti-kutusu[data-toplanti-id="${selectedToplantiId}"]`);
+                if (selectedToplantiDiv) {
+                    const konu = selectedToplantiDiv.querySelector("strong:nth-child(1)").nextSibling.nodeValue.trim();
+                    const tarih = selectedToplantiDiv.querySelector("strong:nth-child(3)").nextSibling.nodeValue.trim();
+                    const baslangicSaati = selectedToplantiDiv.querySelector("strong:nth-child(5)").nextSibling.nodeValue.trim();
+                    const bitisSaati = selectedToplantiDiv.querySelector("strong:nth-child(7)").nextSibling.nodeValue.trim();
+                    const katilimcilar = selectedToplantiDiv.querySelector("strong:nth-child(9)").nextSibling.nodeValue.trim();
+
+                    document.getElementById("guncelle-toplanti-id").value = selectedToplantiId;
+                    document.getElementById("guncelle-konu").value = konu;
+                    document.getElementById("guncelle-tarih").value = tarih;
+                    document.getElementById("guncelle-baslangic-saati").value = baslangicSaati;
+                    document.getElementById("guncelle-bitis-saati").value = bitisSaati;
+                    document.getElementById("guncelle-katilimcilar").value = katilimcilar;
+
+                    guncelleForm.style.display = "block";
+                }
+            } else {
+                guncelleForm.style.display = "none";
+            }
+        }
+
+        async function toplantiyiSil(toplantiId) {
+            const response = await fetch(`/toplanti/${toplantiId}`, {
+                method: "DELETE"
+            });
+            await response.json();
+            toplantilariListele();
+            seciliToplantiyiGoster();
+        }
+
+        async function toplantiyiGuncelle() {
+            const formData = new FormData(guncelleForm);
+            const toplantiId = formData.get("guncelle-toplanti-id");
+            const data = {
+                konu: formData.get("guncelle-konu"),
+                tarih: formData.get("guncelle-tarih"),
+                baslangic_saati: formData.get("guncelle-baslangic-saati"),
+                bitis_saati: formData.get("guncelle-bitis-saati"),
+                katilimcilar: formData.get("guncelle-katilimcilar").split(",").map(item => item.trim())
+            };
+            const response = await fetch(`/toplanti/${toplantiId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(data)
+            });
+            await response.json();
+            toplantilariListele();
+            seciliToplantiyiGoster();
+        }
+
+        toplantilariListele();
+    </script>
+</body>
+</html>
